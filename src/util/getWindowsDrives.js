@@ -1,0 +1,38 @@
+const exec = require('child_process').exec
+const fs = require('fs')
+const path = require('path')
+
+function getWindowsDrives (callback) {
+  if (!callback) {
+    throw new Error('getWindowsDrives called with no callback')
+  }
+  if (process.platform !== 'win32') {
+    throw new Error('getWindowsDrives called but process.plaform !== \'win32\'')
+  }
+  let drives = []
+  exec('wmic LOGICALDISK LIST BRIEF', (error, stdout) => {
+    if (error) {
+      callback(error, drives)
+      return
+    }
+    let parts = stdout.split('\n')
+    if (parts.length) {
+      parts.splice(0, 1)
+      for (let index = 0; index < parts.length; ++index) {
+        let drive = parts[index].slice(0, 2)
+        if (drive.length && drive[drive.length - 1] === ':') {
+          try {
+            fs.statSync(drive + path.sep)
+            drives.push(drive)
+          }
+          catch (e) {
+            console.error(`Cannot stat windows drive: ${drive}`, e)
+          }
+        }
+      }
+      callback(null, drives)
+    }
+  })
+}
+
+export default getWindowsDrives
